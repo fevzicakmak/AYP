@@ -13,9 +13,6 @@ workflows:
       node: 20
       xcode: latest
       cocoapods: default
-      ios_signing:
-        distribution_type: app_store
-        bundle_identifier: com.apartman.yonetim
     scripts:
       - name: Install dependencies
         script: |
@@ -27,16 +24,16 @@ workflows:
           npx cap sync ios
           cd ios/App && pod install || true
           cd ../..
-      - name: Initialize keychain
+      - name: Set up keychain
         script: |
           keychain initialize
-      - name: Fetch signing files from App Store Connect
+      - name: Fetch signing files (auto create)
         script: |
           app-store-connect fetch-signing-files $BUNDLE_ID --type IOS_APP_STORE --create --platform IOS
       - name: Add certificates to keychain
         script: |
           keychain add-certificates
-      - name: Set up code signing settings
+      - name: Set up provisioning profiles
         script: |
           xcode-project use-profiles
       - name: Build IPA
@@ -45,7 +42,7 @@ workflows:
     artifacts:
       - build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log
-      - ios/App/build/*.ipa
+      - $HOME/Library/Developer/Xcode/DerivedData/**/Build/**/*.ipa
     publishing:
       app_store_connect:
         auth: integration
