@@ -9,6 +9,7 @@ workflows:
       vars:
         XCODE_WORKSPACE: "ios/App/App.xcworkspace"
         XCODE_SCHEME: "App"
+        BUNDLE_ID: "com.apartman.yonetim"
       node: 20
       xcode: latest
       cocoapods: default
@@ -16,22 +17,35 @@ workflows:
         distribution_type: app_store
         bundle_identifier: com.apartman.yonetim
     scripts:
-      - name: Install Node dependencies
+      - name: Install dependencies
         script: |
           npm install || true
           npm install -g @capacitor/cli || true
-      - name: Setup Capacitor iOS
+      - name: Setup iOS platform
         script: |
           npx cap add ios || true
-          npx cap sync ios || true
-          pod install --project-directory=ios/App || true
-      - name: Set up code signing
+          npx cap sync ios
+          cd ios/App && pod install || true
+          cd ../..
+      - name: Initialize keychain
+        script: |
+          keychain initialize
+      - name: Fetch signing files from App Store Connect
+        script: |
+          app-store-connect fetch-signing-files $BUNDLE_ID --type IOS_APP_STORE --create --platform IOS
+      - name: Add certificates to keychain
+        script: |
+          keychain add-certificates
+      - name: Set up code signing settings
         script: |
           xcode-project use-profiles
+      - name: Build IPA
+        script: |
+          xcode-project build-ipa --workspace "$XCODE_WORKSPACE" --scheme "$XCODE_SCHEME"
     artifacts:
       - build/ios/ipa/*.ipa
-      - ios/App/build/*.ipa
       - /tmp/xcodebuild_logs/*.log
+      - ios/App/build/*.ipa
     publishing:
       app_store_connect:
         auth: integration
