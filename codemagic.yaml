@@ -5,12 +5,11 @@ workflows:
     integrations:
       app_store_connect: Codemagic
     environment:
+      vars:
+        BUNDLE_ID: "com.apartman.yonetim"
       xcode: latest
       cocoapods: default
       node: 20
-      ios_signing:
-        distribution_type: app_store
-        bundle_identifier: com.apartman.yonetim
     scripts:
       - name: Install
         script: |
@@ -19,6 +18,18 @@ workflows:
           npx cap sync ios
           cd ios/App && pod install || true
           cd ../..
+      - name: Init keychain
+        script: |
+          keychain initialize
+      - name: Fetch & Create Profile
+        script: |
+          app-store-connect fetch-signing-files $BUNDLE_ID --type IOS_APP_STORE --create
+      - name: Add certs
+        script: |
+          keychain add-certificates
+      - name: Use profiles
+        script: |
+          xcode-project use-profiles
       - name: Build IPA
         script: |
           xcode-project build-ipa --workspace ios/App/App.xcworkspace --scheme App
