@@ -1,0 +1,39 @@
+workflows:
+  ios-workflow:
+    name: iOS Workflow
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    integrations:
+      app_store_connect: Codemagic
+    environment:
+      xcode: latest
+      cocoapods: default
+      node: 20
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.apartman.yonetim
+    scripts:
+      - name: Install
+        script: |
+          npm install || true
+          npm i -g @capacitor/cli
+      - name: Setup iOS
+        script: |
+          npx cap add ios || true
+          npx cap sync ios
+          cd ios/App && pod install || true
+          cd ../..
+      - name: Use profiles
+        script: |
+          xcode-project use-profiles
+      - name: Build IPA
+        script: |
+          xcode-project build-ipa --workspace ios/App/App.xcworkspace --scheme App
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+    publishing:
+      app_store_connect:
+        auth: integration
+        api_key: Codemagic
+        submit_to_testflight: true
