@@ -1,6 +1,6 @@
 {
-  "appId": "com.apartman.yonetim",
-  "appName": "Apartman Yonetim",
+  "appId": "com.apartman.yonetim.pro",
+  "appName": "Apartman Yönetimi Pro",
   "webDir": "www",
   "bundledWebRuntime": false,
   "server": {
