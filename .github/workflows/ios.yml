@@ -6,21 +6,28 @@ on:
 
 jobs:
   build:
-    runs-on: macos-latest
+    runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
+          
       - name: Install deps
+        run: npm install --legacy-peer-deps || npm install
+        
+      - name: Sync iOS
         run: |
-          npm install
-          npm i -g @capacitor/cli
-      - name: Setup iOS
+          npx cap sync ios || (npx cap add ios && npx cap sync ios)
+          
+      - name: Pod install
         run: |
-          npx cap add ios || true
-          npx cap sync ios
-          cd ios/App && pod install || true
-      - name: Build IPA (no sign)
+          cd ios/App
+          pod install --repo-update || pod install
+          cd ../..
+          
+      - name: Build without signing
         run: |
-          xcodebuild -workspace ios/App/App.xcworkspace -scheme App -sdk iphoneos -configuration Release archive -archivePath build/App.xcarchive CODE_SIGNING_ALLOWED=NO
+          xcodebuild -workspace ios/App/App.xcworkspace -scheme App -configuration Release CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" -sdk iphoneos -destination "generic/platform=iOS" build
