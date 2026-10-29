@@ -1,1 +1,24 @@
+name: iOS Build
+on:
+  workflow_dispatch:
 
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install deps
+        run: |
+          npm install
+          npm i -g @capacitor/cli
+      - name: Setup iOS
+        run: |
+          npx cap add ios || true
+          npx cap sync ios
+          cd ios/App && pod install || true
+      - name: Build IPA (no sign)
+        run: |
+          xcodebuild -workspace ios/App/App.xcworkspace -scheme App -sdk iphoneos -configuration Release archive -archivePath build/App.xcarchive CODE_SIGNING_ALLOWED=NO
