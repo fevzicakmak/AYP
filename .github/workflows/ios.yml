@@ -1,33 +1,59 @@
 name: iOS Build
 on:
   push:
-    branches: [main]
+    branches: [main, ios-appstore-prep]
   workflow_dispatch:
 
 jobs:
   build:
-    runs-on: macos-14
+    runs-on: macos-26
     steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Node 22
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          
-      - name: Install deps
-        run: npm install --legacy-peer-deps || npm install
-        
-      - name: Sync iOS
+          cache: npm
+
+      - name: Verify web entry point
+        run: test -s www/index.html
+
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps
+
+      - name: Generate iOS project and sync Capacitor
         run: |
-          npx cap sync ios || (npx cap add ios && npx cap sync ios)
-          
-      - name: Pod install
+          if [ ! -d ios ]; then
+            npx cap add ios
+          fi
+          npx cap sync ios
+
+      - name: Install CocoaPods dependencies
         run: |
           cd ios/App
-          pod install --repo-update || pod install
-          cd ../..
-          
-      - name: Build without signing
+          pod install --repo-update
+
+      - name: Build iOS app (unsigned validation build)
         run: |
-          xcodebuild -workspace ios/App/App.xcworkspace -scheme App -configuration Release CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" -sdk iphoneos -destination "generic/platform=iOS" build
+          xcodebuild \
+            -workspace ios/App/App.xcworkspace \
+            -scheme App \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination "generic/platform=iOS" \
+            -derivedDataPath build/ios \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build
+
+      - name: Upload unsigned build for diagnostics
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: AYP-iOS-unsigned-build
+          path: build/ios/Build/Products/Release-iphoneos/App.app
+          if-no-files-found: error
+          retention-days: 7
